@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 // const sql = require('mssql/msnodesqlv8');
 const cors = require('cors');
@@ -8,12 +9,32 @@ app.use(express.json());
 
 var admin = require('firebase-admin');
 
-var serviceAccount = require('./serviceAccountKey.json');
+let serviceAccount;
+if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+  try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    if (serviceAccount.private_key) {
+      serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
+    }
+  } catch (err) {
+    console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:", err);
+  }
+} else {
+  try {
+    serviceAccount = require('./serviceAccountKey.json');
+  } catch (err) {
+    console.warn("⚠️ serviceAccountKey.json not found, and FIREBASE_SERVICE_ACCOUNT env var is empty.");
+  }
+}
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://individual-projects-2208-default-rtdb.asia-southeast1.firebasedatabase.app'
-});
+if (serviceAccount) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: 'https://individual-projects-2208-default-rtdb.asia-southeast1.firebasedatabase.app'
+  });
+} else {
+  console.error("❌ Firebase could not be initialized: No credentials provided.");
+}
 
 // Initialize Firebase Database reference
 const db = admin.database();
