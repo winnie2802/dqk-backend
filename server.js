@@ -1,11 +1,12 @@
-require('dotenv').config();
 const express = require('express');
-// const sql = require('mssql/msnodesqlv8');
 const cors = require('cors');
+require('dotenv').config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
+// const sql = require('mssql/msnodesqlv8');
+// const config = {
+//   connectionString:
+//     'Driver={ODBC Driver 17 for SQL Server};Server={DESKTOP-WINNIE\\SQLEXPRESS};Database={mlts-dqk};Trusted_Connection=Yes;'
+// };
 
 var admin = require('firebase-admin');
 
@@ -13,19 +14,20 @@ let serviceAccount;
 if (process.env.FIREBASE_SERVICE_ACCOUNT) {
   try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    
     if (serviceAccount.private_key) {
       serviceAccount.private_key = serviceAccount.private_key.replace(/\\n/g, '\n');
-    }
+    };
   } catch (err) {
-    console.error("❌ Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:", err);
-  }
+    console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT environment variable:', err);
+  };
 } else {
   try {
     serviceAccount = require('./serviceAccountKey.json');
   } catch (err) {
-    console.warn("⚠️ serviceAccountKey.json not found, and FIREBASE_SERVICE_ACCOUNT env var is empty.");
-  }
-}
+    console.warn('⚠️ serviceAccountKey.json not found, and FIREBASE_SERVICE_ACCOUNT env var is empty.');
+  };
+};
 
 if (serviceAccount) {
   admin.initializeApp({
@@ -33,99 +35,112 @@ if (serviceAccount) {
     databaseURL: 'https://individual-projects-2208-default-rtdb.asia-southeast1.firebasedatabase.app'
   });
 } else {
-  console.error("❌ Firebase could not be initialized: No credentials provided.");
-}
+  console.error('❌ Firebase could not be initialized: No credentials provided.');
+};
 
-// Initialize Firebase Database reference
-const db = admin.database();
+const app = express();
+app.use(express.json());
+app.use(cors());
 
-// const config = {
-//   connectionString:
-//     'Driver={ODBC Driver 17 for SQL Server};Server={DESKTOP-WINNIE\\SQLEXPRESS};Database={mlts-dqk};Trusted_Connection=Yes;'
-// };
+const database = admin.database();
 
-/// Get Data from Table 'users' ///
+// Get data from table 'users'
+
 app.get('/user', async (req, res) => {
   try {
     // const pool = await sql.connect(config);
     // const result = await pool.request().query('SELECT * FROM users');
     // res.json(result.recordset);
 
-    const snapshot = await db.ref('users').once('value');
+    const snapshot = await database.ref('users').once('value');
     const usersData = snapshot.val() || {};
-    // Convert users object to array
-    const usersList = Object.keys(usersData).map(phone => ({
+    
+    const usersList = Object.keys(usersData).map(phone => ({  // Convert users object to array
       phone,
-      ...usersData[phone]
+      ...usersData[phone],
     }));
+    
     res.json(usersList);
   } catch (err) {
     console.error('❌ Firebase Error: ', err);
-    res.status(500).json({ error: '❌ Database error' });
-  }
+    
+    res.status(500).json({error: '❌ Database error'});
+  };
 });
 
-/// Login ///
+// Login
+
 app.post('/login', async (req, res) => {
-  const { phone } = req.body;
+  const {phone} = req.body;
+  
   try {
     // const pool = await sql.connect(config);
+    // 
     // const result = await pool
     //   .request()
     //   .input('phone', sql.VarChar, phone)
     //   .query('SELECT * FROM users WHERE phone = @phone');
     //
     // if (result.recordset.length > 0) {
-    //   res.json({ success: true, user: result.recordset[0] });
+    //   res.json({success: true, user: result.recordset[0]});
     // } else {
-    //   res.json({ success: false, message: '❌ User not found' });
-    // }
+    //   res.json({success: false, message: '❌ User not found'});
+    // };
 
-    const snapshot = await db.ref(`users/${phone}`).once('value');
+    const snapshot = await database.ref(`users/${phone}`).once('value');
+    
     if (snapshot.exists()) {
-      res.json({ success: true, user: { phone, ...snapshot.val() } });
+      res.json({success: true, user: {phone, ...snapshot.val()}});
     } else {
-      res.json({ success: false, message: '❌ User not found' });
-    }
+      res.json({success: false, message: '❌ User not found'});
+    };
   } catch (err) {
     console.error('❌ Firebase Error: ', err);
-    res.status(500).json({ error: '❌ Database error' });
-  }
+    
+    res.status(500).json({error: '❌ Database error'});
+  };
 });
 
-/// Get User by Phone ///
+// Get a user by phone-number
+
 app.get('/user/:phone', async (req, res) => {
-  const { phone } = req.params;
+  const {phone} = req.params;
+  
   try {
     // const pool = await sql.connect(config);
+    // 
     // const result = await pool
     //   .request()
     //   .input('phone', sql.VarChar, phone)
     //   .query('SELECT * FROM users WHERE phone = @phone');
     //
     // if (result.recordset.length > 0) {
-    //   res.json({ success: true, user: result.recordset[0] });
+    //   res.json({success: true, user: result.recordset[0]});
     // } else {
-    //   res.json({ success: false, message: '❌ User not found' });
-    // }
+    //   res.json({success: false, message: '❌ User not found'});
+    // };
 
-    const snapshot = await db.ref(`users/${phone}`).once('value');
+    const snapshot = await database.ref(`users/${phone}`).once('value');
+    
     if (snapshot.exists()) {
-      res.json({ success: true, user: { phone, ...snapshot.val() } });
+      res.json({success: true, user: {phone, ...snapshot.val()}});
     } else {
-      res.json({ success: false, message: '❌ User not found' });
-    }
+      res.json({success: false, message: '❌ User not found'});
+    };
   } catch (err) {
     console.error('❌ Firebase Error: ', err);
-    res.status(500).json({ error: '❌ Database error' });
-  }
+    
+    res.status(500).json({error: '❌ Database error'});
+  };
 });
 
-/// Update User ///
+// Update user info
 app.post('/user/update', async (req, res) => {
-  const { phone, username, email, gender, address, city, ward } = req.body;
+  const {phone, username, email, gender, address, city, ward} = req.body;
+  
   try {
     // const pool = await sql.connect(config);
+    // 
     // const result = await pool
     //   .request()
     //   .input('username', sql.NVarChar, username)
@@ -136,19 +151,21 @@ app.post('/user/update', async (req, res) => {
     //   .input('city', sql.NVarChar, city)
     //   .input('ward', sql.NVarChar, ward)
     //   .query(`
-    //     UPDATE users 
+    //     UPDATE users
+    //     
     //     SET username = @username,
     //         email = @email,
     //         gender = @gender,
     //         address = @address,
     //         city = @city,
     //         ward = @ward
+    //     
     //     WHERE phone = @phone
     //   `);
     //
-    // res.json({ success: true, message: '✅ User has successfully updated!' });
+    // res.json({success: true, message: '✅ User has successfully updated!'});
 
-    await db.ref(`users/${phone}`).update({
+    await database.ref(`users/${phone}`).update({
       username,
       email,
       gender,
@@ -156,11 +173,13 @@ app.post('/user/update', async (req, res) => {
       city,
       ward
     });
-    res.json({ success: true, message: '✅ User has successfully updated!' });
+    
+    res.json({success: true, message: '✅ User has successfully updated!'});
   } catch (err) {
     console.error('❌ Firebase Error: ', err);
-    res.status(500).json({ error: '❌ Database error' });
-  }
+    
+    res.status(500).json({error: '❌ Database error'});
+  };
 });
 
 const PORT = process.env.PORT || 3000;
